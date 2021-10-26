@@ -1,0 +1,73 @@
+name: Upload Lambdas
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    # As an inital filter, to only run if something in 'Lambda' has changed
+    paths:
+      - 'Lambda/**'
+
+env:
+  LAMBDA_DIR: Lambda
+  # Add other global envs...
+
+jobs:
+  get_changed_lambdas:
+    name: Get Changed Lambdas
+    runs-on: ubuntu-latest
+    outputs:
+      changed_lambdas: ${{ steps.changed_lambdas.outputs.result }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get changed files
+        uses: dorny/paths-filter@v2
+        id: changed_files
+        with:
+          list-files: json
+          filters: |
+            lambda: '${{ env.LAMBDA_DIR }}/**'
+
+      - name: Get changed lambdas
+        uses: actions/github-script@v5
+        id: changed_lambdas
+        env:
+          CHANGED_LAMBDA_FILES: ${{ steps.changed_files.outputs.lambda_files }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const changedLambdas = [];
+            JSON.parse(process.env.CHANGED_LAMBDA_FILES).forEach((file) => {
+              const name = file.substr(process.env.LAMBDA_DIR.length + 1).split(path.sep)[0];
+              // Check if lambda has already been added
+              if (!changedLambdas.some(obj => obj.name === name)) {
+                const dir = path.join(process.env.LAMBDA_DIR, name);
+                // Only add if lambda still exists (not deleted in commit)
+                if (fs.existsSync(dir)) {
+                  changedLambdas.push({ name: name, path: dir });
+                }
+              }
+            });
+            return changedLambdas;
+
+  deploy:
+    name: Deploy (${{ matrix.name }})
+    needs: get_changed_lambdas
+    if: needs.get_changed_lambdas.outputs.changed_lambdas != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.get_changed_lambdas.outputs.changed_lambdas) }}
+    steps:
+      # Add your deployment steps here...
+      #
+      # Available variables for currently processed lambda:
+      # - Name: ${{ matrix.name }}
+      # - Path (working directory): ${{ matrix.dir }}
+      - run: |
+          echo ${{ matrix.name }}
+          echo ${{ matrix.path }}
