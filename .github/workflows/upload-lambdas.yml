@@ -67,7 +67,7 @@ jobs:
       #
       # Available variables for currently processed lambda:
       # - Name: ${{ matrix.name }}
-      # - Path (working directory): ${{ matrix.dir }}
+      # - Path (working directory): ${{ matrix.path }}
       - run: |
           echo ${{ matrix.name }}
           echo ${{ matrix.path }}
