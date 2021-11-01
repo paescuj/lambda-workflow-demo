@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-    # As an inital filter, to only run if something in 'Lambda' has changed
+    # As an initial filter, to only run if something in 'Lambda' has changed
     paths:
       - 'Lambda/**'
 
